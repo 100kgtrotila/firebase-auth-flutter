@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:firebase_auth_flutter/core/utils/snack_bar_helper.dart';
 import 'package:firebase_auth_flutter/features/auth/providers/auth_provider.dart';
 import 'package:firebase_auth_flutter/features/home/screens/profile_screen.dart';
+import 'package:firebase_auth_flutter/features/notes/screens/notes_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -39,9 +41,7 @@ class HomeScreen extends StatelessWidget {
     }
 
     if (error != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
+      SnackBarHelper.showMessage(context, error);
     }
   }
 
@@ -49,15 +49,26 @@ class HomeScreen extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please login to view this page.')),
-      );
+      SnackBarHelper.showMessage(context, 'Please login to view this page.');
       return;
     }
 
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+  }
+
+  void _openNotes(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      SnackBarHelper.showMessage(context, 'Please login to view your notes.');
+      return;
+    }
+
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const NotesScreen()));
   }
 
   @override
@@ -84,37 +95,87 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Card(
+                margin: EdgeInsets.zero,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
-                  child: Column(
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Hello, $displayName',
-                        style: Theme.of(context).textTheme.headlineSmall,
+                      CircleAvatar(
+                        radius: 26,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer,
+                        child: Icon(
+                          Icons.person_outline,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(user?.email ?? 'No email'),
-                      const SizedBox(height: 16),
-                      const Text(
-                        '✅ You are logged in!',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hello, $displayName',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              user?.email ?? 'No email',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.check_circle_outline,
+                                  size: 18,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'You are logged in!',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: () => _openProfile(context),
-                icon: const Icon(Icons.verified_user_outlined),
-                label: const Text('Open Protected Profile'),
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: () => _openNotes(context),
+                  icon: const Icon(Icons.note_alt_outlined),
+                  label: const Text('My Notes'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: () => _openProfile(context),
+                  icon: const Icon(Icons.verified_user_outlined),
+                  label: const Text('Open Protected Profile'),
+                ),
               ),
             ],
           ),

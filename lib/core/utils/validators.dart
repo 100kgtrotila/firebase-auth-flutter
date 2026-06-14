@@ -58,4 +58,32 @@ class Validators {
 
     return null;
   }
+
+  static String? validateNoteTitle(String? value) {
+    final title = value?.trim() ?? '';
+
+    if (title.isEmpty) {
+      return 'Title is required';
+    }
+
+    if (title.length < 2) {
+      return 'Title must contain at least 2 characters';
+    }
+
+    return null;
+  }
+
+  static String? validateNoteContent(String? value) {
+    final content = value?.trim() ?? '';
+
+    if (content.isEmpty) {
+      return 'Content is required';
+    }
+
+    if (content.length < 3) {
+      return 'Content must contain at least 3 characters';
+    }
+
+    return null;
+  }
 }
