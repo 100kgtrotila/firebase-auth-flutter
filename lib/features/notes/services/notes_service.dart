@@ -40,16 +40,25 @@ class NotesService {
     });
   }
 
-  Future<void> createNote({required String title, required String content}) {
+  Future<String> createNote({
+    required String title,
+    required String content,
+  }) async {
     final user = _requireUser();
 
-    return _notesCollection(user.uid).add({
+    final docRef = await _notesCollection(user.uid).add({
       'title': title.trim(),
       'content': content.trim(),
       'userId': user.uid,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
+      'imageUrl': null,
+      'imagePath': null,
+      'imageSize': null,
+      'imageContentType': null,
     });
+
+    return docRef.id;
   }
 
   Future<void> updateNote({
@@ -62,6 +71,36 @@ class NotesService {
     return _notesCollection(user.uid).doc(noteId).update({
       'title': title.trim(),
       'content': content.trim(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> updateNoteImage({
+    required String noteId,
+    required String imageUrl,
+    required String imagePath,
+    required int imageSize,
+    required String imageContentType,
+  }) {
+    final user = _requireUser();
+
+    return _notesCollection(user.uid).doc(noteId).update({
+      'imageUrl': imageUrl,
+      'imagePath': imagePath,
+      'imageSize': imageSize,
+      'imageContentType': imageContentType,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> removeNoteImage({required String noteId}) {
+    final user = _requireUser();
+
+    return _notesCollection(user.uid).doc(noteId).update({
+      'imageUrl': FieldValue.delete(),
+      'imagePath': FieldValue.delete(),
+      'imageSize': FieldValue.delete(),
+      'imageContentType': FieldValue.delete(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }

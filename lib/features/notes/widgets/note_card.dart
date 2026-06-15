@@ -48,7 +48,7 @@ class NoteCard extends StatelessWidget {
       return;
     }
 
-    final error = await context.read<NotesProvider>().deleteNote(note.id);
+    final error = await context.read<NotesProvider>().deleteNote(note);
 
     if (!context.mounted) {
       return;
@@ -80,6 +80,8 @@ class NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isLoading = context.watch<NotesProvider>().isLoading;
     final colorScheme = Theme.of(context).colorScheme;
+    final imageUrl = note.imageUrl;
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
     return Card(
       color: colorScheme.surface,
@@ -134,6 +136,10 @@ class NoteCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (hasImage) ...[
+              const SizedBox(height: 14),
+              _NoteImage(imageUrl: imageUrl),
+            ],
             const SizedBox(height: 12),
             Text(
               _dateLabel,
@@ -142,6 +148,49 @@ class NoteCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoteImage extends StatelessWidget {
+  const _NoteImage({required this.imageUrl});
+
+  final String imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: ColoredBox(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
+          child: Image.network(
+            imageUrl,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.contain,
+            webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) {
+                return child;
+              }
+
+              return const Center(child: CircularProgressIndicator());
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Center(
+                child: Icon(
+                  Icons.broken_image_outlined,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

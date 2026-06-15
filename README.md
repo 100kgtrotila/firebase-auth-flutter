@@ -1,4 +1,4 @@
-# 🔐🔥 Firebase Authentication + Firestore Notes App
+# 🔐🔥📦 Firebase Authentication + Firestore Notes App
 
 Виконав: Маринич Данило
 
@@ -6,12 +6,13 @@
 
 ## 📌 Про проєкт
 
-Це Flutter-додаток для роботи з Firebase. У проєкті реалізовано дві лабораторні роботи:
+Це Flutter-додаток для роботи з Firebase. У проєкті реалізовано три лабораторні роботи:
 
 * **Лабораторна робота №16:** Firebase Authentication.
 * **Лабораторна робота №17:** Firebase Firestore Database / Notes App.
+* **Лабораторна робота №18:** Firebase Storage.
 
-Спочатку користувач реєструється або входить через Firebase Authentication. Після входу він може відкривати захищені екрани та працювати зі своїми нотатками, які зберігаються у Firebase Firestore.
+Користувач реєструється або входить через Firebase Authentication. Після входу він може створювати власні нотатки, які зберігаються у Firestore, а також прикріплювати до них фото через Firebase Storage.
 
 ---
 
@@ -39,7 +40,7 @@
 
 ### Вхід
 
-Користувач входить через email і password. Після успішного входу ручна навігація не потрібна, бо `AuthGate` автоматично відкриває `HomeScreen`.
+Користувач входить через email і password. Після успішного входу ручна навігація на Home не потрібна, бо `AuthGate` автоматично відкриває `HomeScreen`.
 
 ### Вихід
 
@@ -75,7 +76,7 @@
 
 ## 📌 Про LR17
 
-У цій лабораторній роботі до вже готової авторизації з LR16 додано **Notes App** з Firebase Firestore backend.
+У цій лабораторній роботі до готової авторизації з LR16 додано **Notes App** з Firebase Firestore backend.
 
 Користувач після входу може:
 
@@ -147,6 +148,7 @@ lib/
         note.dart
       services/
         notes_service.dart
+        storage_service.dart
       providers/
         notes_provider.dart
       screens/
@@ -155,17 +157,20 @@ lib/
       widgets/
         note_card.dart
         empty_notes_view.dart
+        note_image_picker_section.dart
 ```
 
 `features/auth/` — логіка авторизації з LR16.
 
 `features/home/` — захищені екрани після входу.
 
-`features/notes/` — нова частина LR17 для роботи з Firestore Notes.
+`features/notes/` — частина LR17/LR18 для роботи з нотатками, Firestore і Storage.
 
 `NotesService` — інкапсулює роботу з Firestore: create, read stream, update, delete.
 
-`NotesProvider` — зберігає loading state та викликає `NotesService`.
+`StorageService` — інкапсулює роботу з Firebase Storage: upload image, get download URL, delete image.
+
+`NotesProvider` — зберігає loading state, upload progress і викликає service-класи.
 
 `NotesScreen` — показує список нотаток через `StreamBuilder`.
 
@@ -262,19 +267,6 @@ Firestore Database → Rules
 
 ## 📸 Скріншоти LR17
 
-Для LR17 потрібно додати скріншоти в папку `screenshots/` з такими назвами:
-
-```text
-10_firestore_enabled.png
-11_empty_notes.png
-12_create_note.png
-13_notes_list.png
-14_edit_note.png
-15_delete_dialog.png
-16_firestore_structure.png
-17_firestore_rules.png
-```
-
 ### Firestore Database enabled
 ![Firestore enabled](screenshots/10_firestore_enabled.png)
 
@@ -292,6 +284,168 @@ Firestore Database → Rules
 
 ### Delete dialog
 ![Delete dialog](screenshots/15_delete_dialog.png)
+
+---
+
+# 📦 Лабораторна робота №18: Firebase Storage
+
+## 📌 Про LR18
+
+У цій лабораторній роботі Notes App розширено можливістю прикріплювати фото до нотаток.
+
+Фото вибирається з галереї через `image_picker`, завантажується у Firebase Storage, після чого download URL і metadata зберігаються у Firestore-документі нотатки. Якщо нотатку видалити, прикріплене фото також видаляється зі Storage.
+
+---
+
+## ✅ Виконані вимоги LR18
+
+* ✅ Firebase Storage setup.
+* ✅ Upload image через `image_picker`.
+* ✅ Get download URL.
+* ✅ Save URL to Firestore.
+* ✅ Display image from URL.
+* ✅ Upload progress indicator.
+* ✅ Delete image from Storage.
+* ✅ File size validation max 5MB.
+* ✅ Metadata: contentType, size, userId, noteId.
+* ✅ Integration with Firestore Notes.
+
+---
+
+## 📁 Storage structure
+
+Файли зберігаються у Firebase Storage за user-specific шляхом:
+
+```text
+users
+  └── {userId}
+      └── notes
+          └── {noteId}
+              └── image_{timestamp}.jpg
+```
+
+Для PNG-файлів використовується розширення `.png`, а `contentType` зберігається як `image/png`.
+
+---
+
+## 🔥 Firestore note document
+
+Після додавання фото документ нотатки має такі поля:
+
+```text
+users/{userId}/notes/{noteId}
+  ├── title
+  ├── content
+  ├── userId
+  ├── createdAt
+  ├── updatedAt
+  ├── imageUrl
+  ├── imagePath
+  ├── imageSize
+  └── imageContentType
+```
+
+`imageUrl` використовується для показу фото через `Image.network`, а `imagePath` потрібен для надійного видалення файлу зі Storage.
+
+---
+
+## 🔑 Основний функціонал LR18
+
+### Pick image
+
+У `NoteFormScreen` користувач може натиснути `Add Photo` і вибрати зображення з галереї. Для цього використовується `image_picker`.
+
+### File size validation
+
+Перед upload перевіряється розмір файлу. Максимальний розмір:
+
+```text
+5MB
+```
+
+Якщо файл більший, користувач бачить повідомлення `Image is too large. Maximum size is 5MB.`.
+
+### Upload image
+
+`StorageService.uploadNoteImage()` завантажує файл у Firebase Storage за шляхом:
+
+```text
+users/{userId}/notes/{noteId}/image_{timestamp}.jpg
+```
+
+Під час upload у формі показується `LinearProgressIndicator`.
+
+### Save URL to Firestore
+
+Після upload сервіс отримує download URL через `getDownloadURL()`. Далі `NotesService.updateNoteImage()` записує у Firestore:
+
+* `imageUrl`;
+* `imagePath`;
+* `imageSize`;
+* `imageContentType`;
+* `updatedAt`.
+
+### Display image
+
+`NoteCard` показує прикріплене фото через `Image.network`, якщо у нотатки є `imageUrl`.
+
+### Delete image
+
+При remove/replace/delete note старий файл видаляється зі Storage через `imagePath`. Якщо файл уже не існує, застосунок не падає.
+
+---
+
+## 🔐 Storage Rules
+
+Файл правил:
+
+```text
+storage.rules
+```
+
+Rules:
+
+```js
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{userId}/notes/{noteId}/{fileName} {
+      allow read: if request.auth != null
+        && request.auth.uid == userId;
+
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+
+      allow delete: if request.auth != null
+        && request.auth.uid == userId;
+    }
+  }
+}
+```
+
+Ці правила потрібно додати у Firebase Console:
+
+```text
+Firebase Console → Storage → Rules
+```
+
+---
+
+## 📸 Скріншоти LR18
+
+### Add photo to note
+![Add photo](screenshots/16_add_photo.png)
+
+### Note with image
+![Upload progress](screenshots/17_notes_with_images.png)
+
+### Firestore
+![Note with image](screenshots/18_firestorage_image.png)
+
+
 ---
 
 ## ⚙️ Використані технології
@@ -301,8 +455,10 @@ Firestore Database → Rules
 * Firebase Core
 * Firebase Authentication
 * Cloud Firestore
+* Firebase Storage
 * FlutterFire CLI
 * Provider
+* Image Picker
 * Material 3
 
 ---
@@ -321,7 +477,7 @@ flutter pub get
 flutter run
 ```
 
-Якщо виникають проблеми після зміни залежностей:
+Якщо після зміни Firebase-конфігурації або залежностей виникають проблеми:
 
 ```bash
 flutter clean
@@ -348,6 +504,7 @@ ios/Runner/GoogleService-Info.plist
 ```text
 Authentication → Sign-in method → Email/Password
 Firestore Database
+Storage
 ```
 
 ---
@@ -357,12 +514,17 @@ Firestore Database
 1. Запустити додаток.
 2. Зареєструватися або увійти.
 3. Відкрити `My Notes`.
-4. Створити нотатку.
-5. Перевірити, що нотатка з’явилась у Firebase Console → Firestore Database.
-6. Відредагувати нотатку.
-7. Видалити нотатку.
-8. Увійти під іншим користувачем і перевірити, що нотатки першого користувача не видно.
-9. Перевірити Firestore Rules.
+4. Створити нотатку без фото.
+5. Створити нотатку з фото.
+6. Перевірити, що фото завантажилось у Firebase Storage.
+7. Перевірити, що `imageUrl` і `imagePath` збереглись у Firestore note document.
+8. Перевірити, що фото показується в нотатці.
+9. Відредагувати нотатку і замінити фото.
+10. Видалити фото з нотатки.
+11. Видалити нотатку і перевірити, що image також видалився зі Storage.
+12. Увійти під іншим користувачем і перевірити, що нотатки першого користувача не видно.
+13. Спробувати файл більше 5MB і перевірити validation.
+14. Перевірити Firestore Rules і Storage Rules.
 
 ---
 
@@ -387,47 +549,51 @@ No issues found
 flutter test
 ```
 
-Тести перевіряють валідатори, мапінг auth-помилок і базову роботу `Note.copyWith`.
+Тести запускаються для базової перевірки валідаторів, мапінгу auth-помилок і моделі нотатки. Основний акцент LR18 зроблено на Firebase Storage flow.
 
 ---
 
 ## 🛠️ Технічні рішення
 
-### Чому використано Firestore?
+### Чому використано Firebase Storage?
 
-Firestore дозволяє швидко зберігати дані у cloud database, отримувати real-time updates і не писати власний backend.
+Firebase Storage дозволяє зберігати файли користувача окремо від Firestore. У Firestore зберігаються тільки URL, шлях до файлу і metadata.
 
-### Чому нотатки зберігаються в `users/{userId}/notes`?
+### Чому URL зберігається у Firestore?
 
-Так кожен користувач має власну підколекцію нотаток. Це спрощує доступ до даних і дозволяє легко написати Security Rules.
+`imageUrl` потрібен для швидкого показу фото в UI через `Image.network`, а `imagePath` потрібен для видалення файлу зі Storage.
 
-### Навіщо потрібен NotesService?
+### Чому Storage-логіка винесена в StorageService?
 
-`NotesService` збирає всю Firestore-логіку в одному місці, щоб UI не працював напряму з `FirebaseFirestore`.
+Так UI не працює напряму з `FirebaseStorage`, а вся логіка upload/delete зібрана в одному service-класі.
 
-### Навіщо потрібен NotesProvider?
+### Як реалізовано user-specific storage?
 
-`NotesProvider` керує loading state для create/update/delete і дає UI доступ до notes stream.
+Файл завантажується тільки в папку поточного користувача:
 
-### Як працюють real-time updates?
+```text
+users/{userId}/notes/{noteId}
+```
 
-`NotesService.getNotes()` використовує Firestore `.snapshots()`, а `NotesScreen` слухає цей stream через `StreamBuilder`.
+Storage Rules перевіряють, що `request.auth.uid == userId`.
 
 ---
 
 ## ✅ Чеклист здачі
 
 * ✅ Firebase Authentication з LR16 працює.
-* ✅ Firestore Database підключено.
-* ✅ `cloud_firestore` додано.
-* ✅ Note model реалізовано.
-* ✅ Create note працює.
-* ✅ Read notes через `StreamBuilder` працює.
-* ✅ Update note працює.
-* ✅ Delete note працює.
-* ✅ User-specific data реалізовано.
-* ✅ Real-time updates працюють.
-* ✅ Security Rules додано.
+* ✅ Firestore Notes App з LR17 працює.
+* ✅ Firebase Storage підключено.
+* ✅ `firebase_storage` додано.
+* ✅ `image_picker` додано.
+* ✅ Upload image працює.
+* ✅ Download URL зберігається у Firestore.
+* ✅ Фото показується у нотатці.
+* ✅ Upload progress реалізовано.
+* ✅ File size validation 5MB реалізовано.
+* ✅ Delete image from Storage реалізовано.
+* ✅ Firestore Rules додано.
+* ✅ Storage Rules додано.
 * ✅ `flutter analyze` перевірено.
 * ✅ README оформлено.
 
@@ -435,4 +601,4 @@ Firestore дозволяє швидко зберігати дані у cloud dat
 
 ## 📌 Висновок
 
-У результаті виконання LR16 було реалізовано Firebase Authentication, а в LR17 до проєкту додано Notes App з Firebase Firestore backend. Додаток підтримує авторизацію користувача, CRUD для нотаток, real-time оновлення та зберігає дані окремо для кожного користувача.
+У результаті виконання LR16 було реалізовано Firebase Authentication, у LR17 додано Notes App з Firestore backend, а в LR18 застосунок розширено роботою з Firebase Storage. Тепер користувач може створювати власні нотатки, додавати до них фото, бачити оновлення в реальному часі та працювати тільки зі своїми даними.
